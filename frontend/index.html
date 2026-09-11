@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PatientTriage.ai — ED Triage Decision Support & Clinical Workflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+
+<!-- AUTH SCREEN — Sign In & Sign Up tabs -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="brand">
+      <svg class="brand-pulse" viewBox="0 0 120 32" aria-hidden="true">
+        <polyline points="0,16 24,16 30,4 36,28 42,16 120,16" />
+      </svg>
+      <div class="brand-text">
+        <span class="brand-name">PatientTriage<span class="accent">.ai</span></span>
+        <span class="brand-sub">Decision support, not decision-making</span>
+      </div>
+    </div>
+
+    <!-- Auth Tabs -->
+    <div class="auth-tabs" id="authTabs">
+      <button class="auth-tab active" id="tabSignIn" type="button">Sign In</button>
+      <button class="auth-tab" id="tabSignUp" type="button">Create Account</button>
+    </div>
+
+    <!-- SIGN IN FORM -->
+    <div id="signInPanel">
+      <h2>Staff Sign In</h2>
+      <p class="panel-sub">Sign in with your email and password to access the triage portal.</p>
+      <form id="loginForm">
+        <label>Email address
+          <input type="email" name="email" required autocomplete="username" placeholder="e.g. doctor@hospital.com">
+        </label>
+        <label>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Password</span>
+            <button type="button" class="forgot-link" id="btnGoForgot">Forgot password?</button>
+          </div>
+          <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+        </label>
+        <div class="login-error" id="loginError"></div>
+        <button type="submit" class="btn btn-primary" id="loginBtn" style="width:100%;">Sign In</button>
+      </form>
+    </div>
+
+    <!-- SIGN UP FORM -->
+    <div id="signUpPanel" class="hidden">
+      <h2>Create Staff Account</h2>
+      <p class="panel-sub">Register as a Nurse or Doctor with real-time specialization routing.</p>
+      <form id="signupForm">
+        <label>Full Name
+          <input type="text" name="name" required placeholder="e.g. Dr. Sarah Connor or Nurse John">
+        </label>
+        <label>Work Email
+          <input type="email" name="email" required placeholder="e.g. sarah.connor@hospital.com">
+        </label>
+        <label>Password
+          <input type="password" name="password" required minlength="4" placeholder="At least 4 characters">
+        </label>
+        
+        <label>Staff Role
+          <div class="role-selector">
+            <label class="role-card selected" id="roleNurseCard">
+              <input type="radio" name="role" value="nurse" checked>
+              <div class="role-info">
+                <span class="role-title">Nurse</span>
+                <span class="role-desc">Triage intake, patient vitals & doctor routing</span>
+              </div>
+            </label>
+            <label class="role-card" id="roleDoctorCard">
+              <input type="radio" name="role" value="doctor">
+              <div class="role-info">
+                <span class="role-title">Doctor</span>
+                <span class="role-desc">Specialized treatment, availability & live queue</span>
+              </div>
+            </label>
+          </div>
+        </label>
+
+        <!-- Dynamic Doctor Specialization Selection (visible when Doctor role is picked) -->
+        <div id="doctorSpecializationField" class="hidden specialization-field">
+          <label>Department / Medical Specialization <span class="required-star">*</span>
+            <select name="department" id="signupDepartment">
+              <option value="" disabled selected>Select your medical department...</option>
+              <option value="Cardiology">Cardiology (Chest pain, Cardiac Arrest)</option>
+              <option value="Neurology">Neurology (Stroke, Seizures, Neuro crisis)</option>
+              <option value="Pulmonology">Pulmonology (Difficulty breathing, Asthma)</option>
+              <option value="Emergency Medicine">Emergency Medicine (Critical trauma & resus)</option>
+              <option value="Orthopedics & Trauma">Orthopedics & Trauma (Fractures, bleeding)</option>
+              <option value="General Medicine">General Medicine (Infections, Fever, General)</option>
+              <option value="Pediatrics">Pediatrics (Pediatric emergencies)</option>
+              <option value="Psychiatry">Psychiatry (Crisis & Self-harm evaluation)</option>
+              <option value="General Surgery & Gastroenterology">General Surgery & Gastroenterology (Abdominal)</option>
+            </select>
+          </label>
+          <p class="field-hint">Nurses will route patients matching this specialization directly to your live queue when you are available.</p>
+        </div>
+
+        <div class="login-error" id="signupError"></div>
+        <button type="submit" class="btn btn-primary" id="signupBtn" style="width:100%;">Create Account & Enter</button>
+      </form>
+    </div>
+
+    <!-- FORGOT / RESET PASSWORD PANEL -->
+    <div id="forgotPanel" class="hidden">
+      <h2>Reset Staff Password</h2>
+      <p class="panel-sub" id="forgotSubText">Enter your registered email to receive a 6-digit verification code.</p>
+      
+      <!-- Step 1: Request Code -->
+      <form id="forgotSendCodeForm">
+        <label>Registered Work Email
+          <input type="email" name="email" id="forgotEmailInput" required placeholder="e.g. sarah.connor@hospital.com">
+        </label>
+        <div class="login-error" id="forgotSendError"></div>
+        <div class="login-success hidden" id="forgotSendSuccess"></div>
+        <button type="submit" class="btn btn-primary" id="forgotSendBtn" style="width:100%;">Send Verification Code</button>
+      </form>
+
+      <!-- Step 2: Verify Code and Set New Password -->
+      <form id="forgotResetForm" class="hidden" style="margin-top:16px;">
+        <div class="code-sent-banner" id="codeSentBanner">
+          <span>✓ Verification code sent to: <strong id="codeSentEmailDisplay"></strong></span>
+        </div>
+        <label>6-Digit Verification Code <span class="required-star">*</span>
+          <input type="text" name="code" id="resetCodeInput" required maxlength="6" pattern="[0-9]{6}" placeholder="e.g. 123456" style="letter-spacing:4px; font-family:var(--font-mono); font-size:1.1rem; text-align:center;">
+        </label>
+        <label>New Password <span class="required-star">*</span>
+          <input type="password" name="newPassword" id="resetNewPassInput" required minlength="4" placeholder="At least 4 characters">
+        </label>
+        <label>Confirm New Password <span class="required-star">*</span>
+          <input type="password" name="confirmPassword" id="resetConfirmPassInput" required minlength="4" placeholder="Re-type new password">
+        </label>
+        <div class="login-error" id="resetPassError"></div>
+        <div class="login-success hidden" id="resetPassSuccess"></div>
+        <button type="submit" class="btn btn-primary" id="resetPassBtn" style="width:100%;">Update Password & Sign In</button>
+      </form>
+
+      <div class="auth-back-link">
+        <button type="button" class="btn-link" id="btnBackToSignIn">← Back to Sign In</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MAIN APPLICATION ROOT -->
+<div id="appRoot" class="hidden">
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-pulse" viewBox="0 0 120 32" aria-hidden="true">
+      <polyline points="0,16 24,16 30,4 36,28 42,16 120,16" />
+    </svg>
+    <div class="brand-text">
+      <span class="brand-name">PatientTriage<span class="accent">.ai</span></span>
+      <span class="brand-sub">Decision support, not decision-making</span>
+    </div>
+  </div>
+
+  <div class="topbar-stats" id="topbarStats">
+    <div class="stat"><span class="stat-value" id="statActive">–</span><span class="stat-label">In queue</span></div>
+    <div class="stat"><span class="stat-value" id="statAvgWait">–</span><span class="stat-label">Avg wait (min)</span></div>
+    <div class="stat"><span class="stat-value" id="statLongest">–</span><span class="stat-label">Longest wait</span></div>
+    <div class="stat"><span class="stat-value" id="statOverrides">–</span><span class="stat-label">Clinician overrides</span></div>
+  </div>
+
+  <div class="topbar-actions">
+    <!-- Doctor Topbar Availability Toggle -->
+    <div class="topbar-avail hidden" id="topbarAvail">
+      <label class="avail-switch-label" title="Toggle your real-time on-duty availability for patient intake">
+        <span class="avail-dot" id="topbarAvailDot"></span>
+        <span id="topbarAvailText">Available</span>
+        <input type="checkbox" id="topbarAvailCheck" checked>
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <span class="clock"><span class="live-dot" id="liveDot"></span><span id="clock">--:--:--</span></span>
+    
+    <!-- User Badge (Click to open profile) -->
+    <div class="user-badge" id="userBadge" role="button" tabindex="0" title="Click to view profile & settings">
+      <span class="user-avatar-circle" id="userAvatar">U</span>
+      <div class="user-badge-text">
+        <span class="user-name" id="userName">—</span>
+        <div class="user-badges-row">
+          <span class="role-pill" id="userRole">—</span>
+          <span class="dept-pill hidden" id="userDeptPill">—</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-ghost" id="logoutBtn">Sign out</button>
+  </div>
+</header>
+
+<!-- DISTRIBUTION STRIP -->
+<div class="distribution" id="distribution" aria-label="Queue composition by acuity level"></div>
+
+<!-- ========================================================================= -->
+<!-- NURSE INTERFACE: Triage Intake + Live Queue + Doctor Routing -->
+<!-- ========================================================================= -->
+<div id="nurseView" class="hidden">
+  <div class="station-banner">
+    <div class="station-title">
+      <span class="station-badge nurse-badge">Nurse Station</span>
+      <span>Triage Intake, Acuity Assessment & Doctor Assignment</span>
+    </div>
+    <div class="station-avail-summary" id="nurseAvailSummary">
+      <span class="avail-count-pill" id="availDocsCountPill">Loading available doctors...</span>
+    </div>
+  </div>
+
+  <main class="layout">
+    <!-- INTAKE PANEL -->
+    <section class="panel intake" aria-labelledby="intakeTitle">
+      <h2 id="intakeTitle">New Patient Arrival</h2>
+      <p class="panel-sub">First-minutes intake. Record vitals, assess physiological risk factors with AI guidance, and admit to the live queue.</p>
+
+      <form id="intakeForm">
+        <div class="grid-2">
+          <label>Patient name <span class="required-star">*</span>
+            <input type="text" name="name" required placeholder="e.g. R. Kapoor">
+          </label>
+          <label>Age (years)
+            <input type="number" name="age" min="0" max="120" step="0.1" placeholder="e.g. 68">
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label>Sex
+            <select name="sex">
+              <option value="">—</option>
+              <option value="F">Female</option>
+              <option value="M">Male</option>
+              <option value="O">Other / unspecified</option>
+            </select>
+          </label>
+          <label>Onset (minutes ago)
+            <input type="number" name="onsetMinutesAgo" min="0" placeholder="if known">
+          </label>
+        </div>
+
+        <label>Chief complaint <span class="required-star">*</span>
+          <select name="chiefComplaint" id="chiefComplaint" required></select>
+        </label>
+
+        <label>Consciousness (AVPU)
+          <select name="consciousness" id="consciousness"></select>
+        </label>
+
+        <fieldset class="vitals">
+          <legend>Vitals <span class="legend-hint">— leave blank if not yet taken</span></legend>
+          <div class="grid-3">
+            <label>Heart rate <span class="unit">bpm</span><input type="number" name="hr"></label>
+            <label>Systolic BP <span class="unit">mmHg</span><input type="number" name="sbp"></label>
+            <label>Resp. rate <span class="unit">/min</span><input type="number" name="rr"></label>
+            <label>SpO₂ <span class="unit">%</span><input type="number" name="spo2" min="0" max="100"></label>
+            <label>Temp <span class="unit">°C</span><input type="number" step="0.1" name="tempC"></label>
+            <label>Pain <span class="unit">0–10</span><input type="number" name="painScore" min="0" max="10"></label>
+          </div>
+        </fieldset>
+
+        <div class="checks">
+          <label class="check"><input type="checkbox" name="severeBleeding"> Actively / severely bleeding</label>
+          <div class="comorbidities">
+            <span class="comorb-label">Relevant history:</span>
+            <label class="check"><input type="checkbox" name="comorbidities" value="cardiac"> Cardiac</label>
+            <label class="check"><input type="checkbox" name="comorbidities" value="respiratory"> Respiratory</label>
+            <label class="check"><input type="checkbox" name="comorbidities" value="diabetes"> Diabetes</label>
+            <label class="check"><input type="checkbox" name="comorbidities" value="immunocompromised"> Immunocompromised</label>
+            <label class="check"><input type="checkbox" name="comorbidities" value="anticoagulant"> On blood thinners</label>
+            <label class="check"><input type="checkbox" name="comorbidities" value="pregnancy"> Pregnant</label>
+          </div>
+        </div>
+
+        <label>Clinical Notes <span class="legend-hint">(optional, free text)</span>
+          <textarea name="notes" rows="2" placeholder="Anything else the triage team should flag..."></textarea>
+        </label>
+
+        <button type="submit" class="btn btn-primary" id="submitBtn">Run Triage Assessment & Admit</button>
+      </form>
+
+      <div id="lastResult" class="last-result hidden"></div>
+    </section>
+
+    <!-- LIVE QUEUE PANEL -->
+    <section class="panel queue" aria-labelledby="queueTitle">
+      <div class="queue-head">
+        <div>
+          <h2 id="queueTitle">Emergency Department Live Queue</h2>
+          <p class="panel-sub" style="margin-bottom:0;">Sorted by acuity level (1 to 5) then arrival time. Live updates across all stations.</p>
+        </div>
+        <div class="queue-filters" id="queueFilters">
+          <button class="chip active" data-filter="active">Active</button>
+          <button class="chip" data-filter="waiting">Waiting</button>
+          <button class="chip" data-filter="in_progress">Being seen</button>
+          <button class="chip" data-filter="discharged">Discharged</button>
+        </div>
+      </div>
+      <div id="nurseQueueList" class="queue-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ========================================================================= -->
+<!-- DOCTOR INTERFACE: Availability Control + Specialized Queue + Care Actions -->
+<!-- ========================================================================= -->
+<div id="doctorView" class="hidden">
+  <div class="doctor-station-header">
+    <div class="doc-header-info">
+      <div class="doc-header-top">
+        <span class="station-badge doctor-badge">Doctor Station</span>
+        <span class="doctor-dept-badge" id="docHeaderDept">Specialization</span>
+      </div>
+      <h2 id="docHeaderGreeting">Doctor Station</h2>
+      <p class="panel-sub">Patients assigned to you by the triage nurse. Attend, re-triage, or discharge patients under your care.</p>
+    </div>
+
+    <!-- Doctor Main Availability Card -->
+    <div class="doc-avail-card" id="docAvailCard">
+      <div class="doc-avail-status">
+        <div class="avail-indicator-circle" id="docAvailCircle"></div>
+        <div>
+          <div class="doc-avail-heading" id="docAvailHeading">Available on Duty</div>
+          <div class="doc-avail-sub" id="docAvailSub">Nurses can assign new incoming patients to you</div>
+        </div>
+      </div>
+      <button class="btn btn-avail" id="docAvailToggleBtn">
+        <span id="docAvailBtnText">Set Status: Off Duty</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="doctor-metrics-grid">
+    <div class="metric-card">
+      <span class="metric-num" id="docStatAssigned">0</span>
+      <span class="metric-label">Assigned Active</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-num" id="docStatWaiting">0</span>
+      <span class="metric-label">Waiting for Care</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-num" id="docStatInTreatment">0</span>
+      <span class="metric-label">In Treatment</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-num" id="docStatCritical">0</span>
+      <span class="metric-label">Critical (L1 / L2)</span>
+    </div>
+  </div>
+
+  <!-- Doctor Queue Section -->
+  <div class="doctor-queue-container">
+    <div class="doctor-queue-header">
+      <div class="doc-section-title">
+        <h3>My Assigned Patients (<span id="docTabAssignedCount">0</span>)</h3>
+      </div>
+      <div class="queue-filters" id="docStatusFilters">
+        <button class="chip active" data-filter="active">Active</button>
+        <button class="chip" data-filter="waiting">Waiting</button>
+        <button class="chip" data-filter="in_progress">In Treatment</button>
+        <button class="chip" data-filter="discharged">Discharged</button>
+      </div>
+    </div>
+
+    <div id="doctorQueueList" class="queue-list"></div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PROFILE INTERFACE MODAL -->
+<!-- ========================================================================= -->
+<div class="modal-backdrop hidden" id="profileBackdrop">
+  <div class="modal modal-profile">
+    <div class="profile-header">
+      <div class="profile-avatar-large" id="profileAvatarLarge">U</div>
+      <div class="profile-title-block">
+        <h3 id="profileNameDisplay">User Name</h3>
+        <div class="profile-pill-row">
+          <span class="role-pill" id="profileRoleDisplay">Role</span>
+          <span class="dept-pill hidden" id="profileDeptDisplay">Specialization</span>
+        </div>
+        <span class="profile-email-text" id="profileEmailDisplay">user@hospital.com</span>
+      </div>
+      <button class="modal-close-x" id="profileCloseTop">&times;</button>
+    </div>
+
+    <!-- Doctor Availability Section inside Profile -->
+    <div class="profile-section hidden" id="profileDoctorAvailSection">
+      <h4>Clinical Availability Status</h4>
+      <div class="profile-avail-box">
+        <div class="avail-row">
+          <span class="avail-dot" id="profileAvailDot"></span>
+          <span class="avail-label-text" id="profileAvailLabel">Currently Available on Duty</span>
+        </div>
+        <button class="btn btn-ghost btn-small" id="profileAvailToggleBtn">Change Availability</button>
+      </div>
+    </div>
+
+    <!-- Edit Profile Form -->
+    <div class="profile-section">
+      <h4>Edit Profile Information</h4>
+      <form id="editProfileForm">
+        <label>Full Name
+          <input type="text" id="editProfileName" required>
+        </label>
+        <label>Email Address
+          <input type="email" id="editProfileEmail" required>
+        </label>
+        <div id="editProfileDeptGroup" class="hidden">
+          <label>Medical Specialization
+            <select id="editProfileDept">
+              <option value="Cardiology">Cardiology</option>
+              <option value="Neurology">Neurology</option>
+              <option value="Pulmonology">Pulmonology</option>
+              <option value="Emergency Medicine">Emergency Medicine</option>
+              <option value="Orthopedics & Trauma">Orthopedics & Trauma</option>
+              <option value="General Medicine">General Medicine</option>
+              <option value="Pediatrics">Pediatrics</option>
+              <option value="Psychiatry">Psychiatry</option>
+              <option value="General Surgery & Gastroenterology">General Surgery & Gastroenterology</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-feedback" id="editProfileFeedback"></div>
+        <button type="submit" class="btn btn-primary btn-small">Save Profile Changes</button>
+      </form>
+    </div>
+
+    <!-- Change Password Form -->
+    <div class="profile-section">
+      <h4>Change Password</h4>
+      <form id="changePasswordForm">
+        <label>Current Password
+          <input type="password" id="currentPasswordInput" required placeholder="••••••••">
+        </label>
+        <div class="grid-2">
+          <label>New Password
+            <input type="password" id="newPasswordInput" required minlength="4" placeholder="••••••••">
+          </label>
+          <label>Confirm New Password
+            <input type="password" id="confirmNewPasswordInput" required minlength="4" placeholder="••••••••">
+          </label>
+        </div>
+        <div class="form-feedback" id="passwordFeedback"></div>
+        <button type="submit" class="btn btn-ghost btn-small">Update Password</button>
+      </form>
+    </div>
+
+    <!-- Danger Zone / Delete Account -->
+    <div class="profile-section profile-danger-zone">
+      <h4>Account Actions</h4>
+      <p class="panel-sub" style="margin-bottom:10px;">Sign out from this session or permanently remove your staff credentials.</p>
+      <div class="profile-danger-actions">
+        <button class="btn btn-ghost btn-small" id="profileSignOutBtn">Sign Out</button>
+        <button class="btn btn-danger btn-small" id="profileDeleteAccountBtn">Delete Account</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="profileCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- DELETE ACCOUNT CONFIRMATION MODAL -->
+<!-- ========================================================================= -->
+<div class="modal-backdrop hidden" id="deleteAccountBackdrop">
+  <div class="modal" style="max-width:420px; border-color:var(--l1);">
+    <h3 style="color:var(--l1);">Delete Staff Account?</h3>
+    <p class="panel-sub">This action is permanent and cannot be reversed. Your login account will be deleted and you will be signed out immediately.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="deleteAccountCancel">Cancel</button>
+      <button class="btn btn-danger" id="deleteAccountConfirm">Yes, Delete My Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- ASSIGN / REASSIGN DOCTOR MODAL -->
+<!-- ========================================================================= -->
+<div class="modal-backdrop hidden" id="assignDoctorBackdrop">
+  <div class="modal" style="max-width:440px;">
+    <h3>Assign Patient to Doctor</h3>
+    <p class="panel-sub" id="assignDoctorPatientInfo">Select a specialist doctor for this patient.</p>
+    <label>Available Doctors
+      <select id="modalAssignDoctorSelect">
+        <option value="">— Unassigned (General Queue) —</option>
+      </select>
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="assignDoctorCancel">Cancel</button>
+      <button class="btn btn-primary" id="assignDoctorConfirm">Save Assignment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- CLINICIAN OVERRIDE MODAL -->
+<!-- ========================================================================= -->
+<div class="modal-backdrop hidden" id="overrideBackdrop">
+  <div class="modal">
+    <h3>Override Recommended Priority</h3>
+    <p class="panel-sub">The AI recommendation stays permanently logged for the audit record. This changes where the patient sits in the queue.</p>
+    <label>New Priority Level
+      <select id="overrideLevel"></select>
+    </label>
+    <label>Reason for override <span class="legend-hint">(required, logged in audit timeline)</span>
+      <textarea id="overrideReason" rows="2" placeholder="e.g. Clinical assessment: patient presenting atypical ischemic distress..."></textarea>
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="overrideCancel">Cancel</button>
+      <button class="btn btn-primary" id="overrideConfirm">Confirm Override</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- RE-TRIAGE MODAL -->
+<!-- ========================================================================= -->
+<div class="modal-backdrop hidden" id="retriageBackdrop">
+  <div class="modal">
+    <h3>Update Vitals / Re-triage</h3>
+    <p class="panel-sub">Re-runs AI decision support with updated vitals to assess deterioration or improvement.</p>
+    <div class="grid-3">
+      <label>Heart rate <span class="unit">bpm</span><input type="number" id="rtHr"></label>
+      <label>Systolic BP <span class="unit">mmHg</span><input type="number" id="rtSbp"></label>
+      <label>Resp. rate <span class="unit">/min</span><input type="number" id="rtRr"></label>
+      <label>SpO₂ <span class="unit">%</span><input type="number" id="rtSpo2"></label>
+      <label>Temp °C<input type="number" step="0.1" id="rtTemp"></label>
+      <label>Pain 0–10<input type="number" id="rtPain" min="0" max="10"></label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="retriageCancel">Cancel</button>
+      <button class="btn btn-primary" id="retriageConfirm">Re-run Triage</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PATIENT TIMELINE AUDIT MODAL -->
+<!-- ========================================================================= -->
+<div class="modal-backdrop hidden" id="timelineBackdrop">
+  <div class="modal" style="max-width:500px;">
+    <h3 id="timelineTitle">Patient Timeline</h3>
+    <p class="panel-sub">Every intake, doctor assignment, re-triage, override, and status change with verified clinician signature.</p>
+    <ul class="timeline-list" id="timelineList"></ul>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="timelineClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast" class="toast hidden"></div>
+
+<!-- DOCTOR REAL-TIME PATIENT ASSIGNMENT ALERT CENTER -->
+<div id="doctorNotificationCenter" class="doc-notification-center" aria-live="polite"></div>
+
+</div><!-- /#appRoot -->
+
+<script src="app.js"></script>
+</body>
+</html>

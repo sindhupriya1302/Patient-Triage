@@ -1,0 +1,12 @@
+# Environment variables
+.env
+
+# Node dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Local Mongo Data
+data/
+backend/data/

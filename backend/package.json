@@ -1,0 +1,21 @@
+{
+  "name": "patient-triage-ai-backend",
+  "version": "3.0.0",
+  "description": "AI-assisted ED patient triage decision-support backend (Accenture Innovation Challenge 2026 - PatientTriage.ai). Round 2: MongoDB persistence, staff authentication with roles, real-time Socket.io sync, and patient audit timeline.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.24.4",
+    "nodemailer": "^9.0.6",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
+  }
+}
