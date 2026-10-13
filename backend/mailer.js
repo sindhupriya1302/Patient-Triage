@@ -25,6 +25,7 @@ function createTransporter() {
     });
   }
 
+  // Fallback for development/testing when SMTP credentials are not yet configured in .env
   return null;
 }
 
@@ -56,7 +57,7 @@ async function sendPasswordResetEmail(toEmail, otpCode) {
     </head>
     <body>
       <div class="card">
-        <div class="logo">PatientTriage.ai</div>
+        <div class="logo">🏥 PatientTriage.ai</div>
         <h2>Password Reset Verification Code</h2>
         <p>You recently requested to reset your password for your <strong>PatientTriage.ai</strong> staff portal account. Use the 6-digit verification code below to complete the verification process:</p>
         
@@ -68,7 +69,7 @@ async function sendPasswordResetEmail(toEmail, otpCode) {
         <p>If you did not request this password reset, please disregard this message or contact your hospital system administrator.</p>
 
         <div class="footer">
-          PatientTriage.ai - Emergency Department Clinical Decision Support System
+          PatientTriage.ai · Emergency Department Clinical Decision Support System
         </div>
       </div>
     </body>
@@ -86,18 +87,18 @@ async function sendPasswordResetEmail(toEmail, otpCode) {
         text: textContent,
         html: htmlContent,
       });
-      console.log(`[EMAIL SENT] Password reset OTP sent to ${toEmail} (MessageId: ${info.messageId})`);
+      console.log(`📧 [EMAIL SENT] Password reset OTP sent to ${toEmail} (MessageId: ${info.messageId})`);
       return { success: true, messageId: info.messageId };
     } catch (err) {
-      console.error(`[EMAIL ERROR] Failed to send email to ${toEmail}:`, err.message);
+      console.error(`❌ [EMAIL ERROR] Failed to send email to ${toEmail}:`, err.message);
       return { success: false, error: err.message };
     }
   } else {
     console.log(`\n======================================================`);
-    console.log(`[EMAIL NOTIFICATION] (SMTP not configured in .env)`);
+    console.log(`📧 [EMAIL NOTIFICATION] (SMTP not configured in .env)`);
     console.log(`Recipient: ${toEmail}`);
-    console.log(`Subject: Your PatientTriage.ai Password Reset Code: ${otpCode}`);
-    console.log(`Verification Code: [ ${otpCode} ]`);
+    console.log(`Subject: PatientTriage.ai Password Reset Verification`);
+    console.log(`Status: Verification email dispatched`);
     console.log(`======================================================\n`);
     return { success: true, simulated: true };
   }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PatientTriage.ai - ED Triage Decision Support & Clinical Workflow</title>
+<title>PatientTriage.ai — ED Triage Decision Support & Clinical Workflow</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
@@ -11,7 +11,7 @@
 </head>
 <body>
 
-<!-- AUTH SCREEN - Sign In & Sign Up tabs -->
+<!-- AUTH SCREEN — Sign In & Sign Up tabs -->
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
     <div class="brand">
@@ -36,14 +36,14 @@
       <p class="panel-sub">Sign in with your email and password to access the triage portal.</p>
       <form id="loginForm">
         <label>Email address
-          <input type="email" name="email" required autocomplete="username" placeholder="doctor@hospital.com">
+          <input type="email" name="email" required autocomplete="username" placeholder="e.g. doctor@hospital.com">
         </label>
         <label>
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span>Password</span>
             <button type="button" class="forgot-link" id="btnGoForgot">Forgot password?</button>
           </div>
-          <input type="password" name="password" required autocomplete="current-password" placeholder="********">
+          <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••">
         </label>
         <div class="login-error" id="loginError"></div>
         <button type="submit" class="btn btn-primary" id="loginBtn" style="width:100%;">Sign In</button>
@@ -56,10 +56,10 @@
       <p class="panel-sub">Register as a Nurse or Doctor with real-time specialization routing.</p>
       <form id="signupForm">
         <label>Full Name
-          <input type="text" name="name" required placeholder="Dr. Sarah Connor or Nurse John">
+          <input type="text" name="name" required placeholder="e.g. Dr. Sarah Connor or Nurse John">
         </label>
         <label>Work Email
-          <input type="email" name="email" required placeholder="sarah.connor@hospital.com">
+          <input type="email" name="email" required placeholder="e.g. sarah.connor@hospital.com">
         </label>
         <label>Password
           <input type="password" name="password" required minlength="4" placeholder="At least 4 characters">
@@ -71,20 +71,20 @@
               <input type="radio" name="role" value="nurse" checked>
               <div class="role-info">
                 <span class="role-title">Nurse</span>
-                <span class="role-desc">Triage intake, patient vitals and doctor routing</span>
+                <span class="role-desc">Triage intake, patient vitals & doctor routing</span>
               </div>
             </label>
             <label class="role-card" id="roleDoctorCard">
               <input type="radio" name="role" value="doctor">
               <div class="role-info">
                 <span class="role-title">Doctor</span>
-                <span class="role-desc">Specialized treatment, availability and live queue</span>
+                <span class="role-desc">Specialized treatment, availability & live queue</span>
               </div>
             </label>
           </div>
         </label>
 
-        <!-- Doctor Specialization Selection -->
+        <!-- Dynamic Doctor Specialization Selection (visible when Doctor role is picked) -->
         <div id="doctorSpecializationField" class="hidden specialization-field">
           <label>Department / Medical Specialization <span class="required-star">*</span>
             <select name="department" id="signupDepartment">
@@ -92,15 +92,15 @@
               <option value="Cardiology">Cardiology (Chest pain, Cardiac Arrest)</option>
               <option value="Neurology">Neurology (Stroke, Seizures, Neuro crisis)</option>
               <option value="Pulmonology">Pulmonology (Difficulty breathing, Asthma)</option>
-              <option value="Emergency Medicine">Emergency Medicine (Critical trauma and resus)</option>
+              <option value="Emergency Medicine">Emergency Medicine (Critical trauma & resus)</option>
               <option value="Orthopedics & Trauma">Orthopedics & Trauma (Fractures, bleeding)</option>
               <option value="General Medicine">General Medicine (Infections, Fever, General)</option>
               <option value="Pediatrics">Pediatrics (Pediatric emergencies)</option>
-              <option value="Psychiatry">Psychiatry (Crisis and Self-harm evaluation)</option>
+              <option value="Psychiatry">Psychiatry (Crisis & Self-harm evaluation)</option>
               <option value="General Surgery & Gastroenterology">General Surgery & Gastroenterology (Abdominal)</option>
             </select>
           </label>
-          <p class="field-hint">Nurses route patients matching this specialization directly to your live queue when you are available.</p>
+          <p class="field-hint">Nurses will route patients matching this specialization directly to your live queue when you are available.</p>
         </div>
 
         <div class="login-error" id="signupError"></div>
@@ -111,12 +111,12 @@
     <!-- FORGOT / RESET PASSWORD PANEL -->
     <div id="forgotPanel" class="hidden">
       <h2>Reset Staff Password</h2>
-      <p class="panel-sub" id="forgotSubText">Enter your registered email to receive a secure 6-digit verification code.</p>
+      <p class="panel-sub" id="forgotSubText">Enter your registered email to receive a 6-digit verification code.</p>
       
       <!-- Step 1: Request Code -->
       <form id="forgotSendCodeForm">
         <label>Registered Work Email
-          <input type="email" name="email" id="forgotEmailInput" required placeholder="sarah.connor@hospital.com">
+          <input type="email" name="email" id="forgotEmailInput" required placeholder="e.g. sarah.connor@hospital.com">
         </label>
         <div class="login-error" id="forgotSendError"></div>
         <div class="login-success hidden" id="forgotSendSuccess"></div>
@@ -126,10 +126,10 @@
       <!-- Step 2: Verify Code and Set New Password -->
       <form id="forgotResetForm" class="hidden" style="margin-top:16px;">
         <div class="code-sent-banner" id="codeSentBanner">
-          <span>Verification code sent to: <strong id="codeSentEmailDisplay"></strong></span>
+          <span>✓ Verification code sent to: <strong id="codeSentEmailDisplay"></strong></span>
         </div>
         <label>6-Digit Verification Code <span class="required-star">*</span>
-          <input type="text" name="code" id="resetCodeInput" required maxlength="6" pattern="[0-9]{6}" placeholder="123456" style="letter-spacing:4px; font-family:var(--font-mono); font-size:1.1rem; text-align:center;">
+          <input type="text" name="code" id="resetCodeInput" required maxlength="6" pattern="[0-9]{6}" placeholder="e.g. 123456" style="letter-spacing:4px; font-family:var(--font-mono); font-size:1.1rem; text-align:center;">
         </label>
         <label>New Password <span class="required-star">*</span>
           <input type="password" name="newPassword" id="resetNewPassInput" required minlength="4" placeholder="At least 4 characters">
@@ -143,7 +143,7 @@
       </form>
 
       <div class="auth-back-link">
-        <button type="button" class="btn-link" id="btnBackToSignIn">Back to Sign In</button>
+        <button type="button" class="btn-link" id="btnBackToSignIn">← Back to Sign In</button>
       </div>
     </div>
 
@@ -166,10 +166,10 @@
   </div>
 
   <div class="topbar-stats" id="topbarStats">
-    <div class="stat"><span class="stat-value" id="statActive">-</span><span class="stat-label">In queue</span></div>
-    <div class="stat"><span class="stat-value" id="statAvgWait">-</span><span class="stat-label">Avg wait (min)</span></div>
-    <div class="stat"><span class="stat-value" id="statLongest">-</span><span class="stat-label">Longest wait</span></div>
-    <div class="stat"><span class="stat-value" id="statOverrides">-</span><span class="stat-label">Clinician overrides</span></div>
+    <div class="stat"><span class="stat-value" id="statActive">–</span><span class="stat-label">In queue</span></div>
+    <div class="stat"><span class="stat-value" id="statAvgWait">–</span><span class="stat-label">Avg wait (min)</span></div>
+    <div class="stat"><span class="stat-value" id="statLongest">–</span><span class="stat-label">Longest wait</span></div>
+    <div class="stat"><span class="stat-value" id="statOverrides">–</span><span class="stat-label">Clinician overrides</span></div>
   </div>
 
   <div class="topbar-actions">
@@ -185,14 +185,14 @@
 
     <span class="clock"><span class="live-dot" id="liveDot"></span><span id="clock">--:--:--</span></span>
     
-    <!-- User Badge -->
+    <!-- User Badge (Click to open profile) -->
     <div class="user-badge" id="userBadge" role="button" tabindex="0" title="Click to view profile & settings">
       <span class="user-avatar-circle" id="userAvatar">U</span>
       <div class="user-badge-text">
-        <span class="user-name" id="userName">-</span>
+        <span class="user-name" id="userName">—</span>
         <div class="user-badges-row">
-          <span class="role-pill" id="userRole">-</span>
-          <span class="dept-pill hidden" id="userDeptPill">-</span>
+          <span class="role-pill" id="userRole">—</span>
+          <span class="dept-pill hidden" id="userDeptPill">—</span>
         </div>
       </div>
     </div>
@@ -227,17 +227,17 @@
       <form id="intakeForm">
         <div class="grid-2">
           <label>Patient name <span class="required-star">*</span>
-            <input type="text" name="name" required placeholder="R. Kapoor">
+            <input type="text" name="name" required placeholder="e.g. R. Kapoor">
           </label>
           <label>Age (years)
-            <input type="number" name="age" min="0" max="120" step="0.1" placeholder="68">
+            <input type="number" name="age" min="0" max="120" step="0.1" placeholder="e.g. 68">
           </label>
         </div>
 
         <div class="grid-2">
           <label>Sex
             <select name="sex">
-              <option value="">-</option>
+              <option value="">—</option>
               <option value="F">Female</option>
               <option value="M">Male</option>
               <option value="O">Other / unspecified</option>
@@ -257,14 +257,14 @@
         </label>
 
         <fieldset class="vitals">
-          <legend>Vitals <span class="legend-hint">- leave blank if not yet taken</span></legend>
+          <legend>Vitals <span class="legend-hint">— leave blank if not yet taken</span></legend>
           <div class="grid-3">
             <label>Heart rate <span class="unit">bpm</span><input type="number" name="hr"></label>
             <label>Systolic BP <span class="unit">mmHg</span><input type="number" name="sbp"></label>
             <label>Resp. rate <span class="unit">/min</span><input type="number" name="rr"></label>
-            <label>SpO2 <span class="unit">%</span><input type="number" name="spo2" min="0" max="100"></label>
-            <label>Temp <span class="unit">&deg;C</span><input type="number" step="0.1" name="tempC"></label>
-            <label>Pain <span class="unit">0-10</span><input type="number" name="painScore" min="0" max="10"></label>
+            <label>SpO₂ <span class="unit">%</span><input type="number" name="spo2" min="0" max="100"></label>
+            <label>Temp <span class="unit">°C</span><input type="number" step="0.1" name="tempC"></label>
+            <label>Pain <span class="unit">0–10</span><input type="number" name="painScore" min="0" max="10"></label>
           </div>
         </fieldset>
 
@@ -441,14 +441,14 @@
       <h4>Change Password</h4>
       <form id="changePasswordForm">
         <label>Current Password
-          <input type="password" id="currentPasswordInput" required placeholder="********">
+          <input type="password" id="currentPasswordInput" required placeholder="••••••••">
         </label>
         <div class="grid-2">
           <label>New Password
-            <input type="password" id="newPasswordInput" required minlength="4" placeholder="********">
+            <input type="password" id="newPasswordInput" required minlength="4" placeholder="••••••••">
           </label>
           <label>Confirm New Password
-            <input type="password" id="confirmNewPasswordInput" required minlength="4" placeholder="********">
+            <input type="password" id="confirmNewPasswordInput" required minlength="4" placeholder="••••••••">
           </label>
         </div>
         <div class="form-feedback" id="passwordFeedback"></div>
@@ -495,7 +495,7 @@
     <p class="panel-sub" id="assignDoctorPatientInfo">Select a specialist doctor for this patient.</p>
     <label>Available Doctors
       <select id="modalAssignDoctorSelect">
-        <option value="">-- Unassigned (General Queue) --</option>
+        <option value="">— Unassigned (General Queue) —</option>
       </select>
     </label>
     <div class="modal-actions">
@@ -516,7 +516,7 @@
       <select id="overrideLevel"></select>
     </label>
     <label>Reason for override <span class="legend-hint">(required, logged in audit timeline)</span>
-      <textarea id="overrideReason" rows="2" placeholder="Clinical assessment: patient presenting atypical ischemic distress..."></textarea>
+      <textarea id="overrideReason" rows="2" placeholder="e.g. Clinical assessment: patient presenting atypical ischemic distress..."></textarea>
     </label>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="overrideCancel">Cancel</button>
@@ -536,9 +536,9 @@
       <label>Heart rate <span class="unit">bpm</span><input type="number" id="rtHr"></label>
       <label>Systolic BP <span class="unit">mmHg</span><input type="number" id="rtSbp"></label>
       <label>Resp. rate <span class="unit">/min</span><input type="number" id="rtRr"></label>
-      <label>SpO2 <span class="unit">%</span><input type="number" id="rtSpo2"></label>
-      <label>Temp &deg;C<input type="number" step="0.1" id="rtTemp"></label>
-      <label>Pain 0-10<input type="number" id="rtPain" min="0" max="10"></label>
+      <label>SpO₂ <span class="unit">%</span><input type="number" id="rtSpo2"></label>
+      <label>Temp °C<input type="number" step="0.1" id="rtTemp"></label>
+      <label>Pain 0–10<input type="number" id="rtPain" min="0" max="10"></label>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="retriageCancel">Cancel</button>
@@ -551,12 +551,9 @@
 <!-- PATIENT TIMELINE AUDIT MODAL -->
 <!-- ========================================================================= -->
 <div class="modal-backdrop hidden" id="timelineBackdrop">
-  <div class="modal" style="max-width:540px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-      <h3 id="timelineTitle" style="margin:0;">Patient Timeline</h3>
-      <span id="timelineAuditBadge" style="font-size:0.75rem; padding:3px 8px; border-radius:4px; font-weight:600; background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3);">Hash-Chained Audit Log</span>
-    </div>
-    <p class="panel-sub">Every intake, doctor assignment, re-triage, override, and status change verified with cryptographic SHA-256 signatures.</p>
+  <div class="modal" style="max-width:500px;">
+    <h3 id="timelineTitle">Patient Timeline</h3>
+    <p class="panel-sub">Every intake, doctor assignment, re-triage, override, and status change with verified clinician signature.</p>
     <ul class="timeline-list" id="timelineList"></ul>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="timelineClose">Close</button>

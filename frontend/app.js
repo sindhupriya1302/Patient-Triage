@@ -21,7 +21,6 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 function toast(msg) {
   const el = $('#toast');
-  if (!el) return;
   el.textContent = msg;
   el.classList.remove('hidden');
   clearTimeout(toast._t);
@@ -41,53 +40,38 @@ function levelColor(level) {
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
-
-  const res = await fetch(`${API}${path}`, {
-    ...opts,
-    credentials: 'include',
-    headers: { ...headers, ...(opts.headers || {}) },
-  });
-
+  const res = await fetch(`${API}${path}`, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
   if (res.status === 401) {
-    logout('Session expired or invalid - please sign in again.');
+    logout('Session expired or invalid — please sign in again.');
     throw new Error('Not authenticated');
   }
-
-  if (res.status === 409) {
-    const conflict = await res.json().catch(() => ({}));
-    toast(conflict.error || 'Record was modified concurrently. Refreshing live queue...');
-    await refreshAll();
-    throw new Error(conflict.error || 'Concurrent modification conflict');
-  }
-
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `Request failed (${res.status})`);
   }
-
   if (res.status === 204) return null;
   return res.json();
 }
 
 // =========================================================================
-// AUTH & SESSION MANAGEMENT (HttpOnly Cookie + In-Memory Token)
+// AUTH & SESSION MANAGEMENT
 // =========================================================================
 function saveSession(token, user) {
   authToken = token;
   currentUser = user;
+  sessionStorage.setItem('pt_token', token);
   sessionStorage.setItem('pt_user', JSON.stringify(user));
-  // Clean any old localStorage tokens to prevent XSS exposure
-  localStorage.removeItem('pt_token');
-  sessionStorage.removeItem('pt_token');
+  localStorage.setItem('pt_token', token);
+  localStorage.setItem('pt_user', JSON.stringify(user));
 }
 
 function clearSession() {
   authToken = null;
   currentUser = null;
-  sessionStorage.removeItem('pt_user');
-  localStorage.removeItem('pt_user');
-  localStorage.removeItem('pt_token');
   sessionStorage.removeItem('pt_token');
+  sessionStorage.removeItem('pt_user');
+  localStorage.removeItem('pt_token');
+  localStorage.removeItem('pt_user');
 }
 
 function showLogin() {
@@ -95,16 +79,8 @@ function showLogin() {
   $('#loginScreen').classList.remove('hidden');
 }
 
-async function logout(message) {
-  if (socket) {
-    socket.disconnect();
-    socket = null;
-  }
-  try {
-    await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-  } catch (e) {
-    // ignore network errors on logout
-  }
+function logout(message) {
+  if (socket) { socket.disconnect(); socket = null; }
   clearSession();
   showLogin();
   if (message) toast(message);
@@ -153,13 +129,11 @@ $('#loginForm').addEventListener('submit', async (e) => {
   const btn = $('#loginBtn');
   const errBox = $('#loginError');
   errBox.textContent = '';
-  btn.disabled = true;
-  btn.textContent = 'Signing in...';
+  btn.disabled = true; btn.textContent = 'Signing in...';
 
   try {
     const res = await fetch(`${API}/auth/login`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
@@ -170,8 +144,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
   } catch (err) {
     errBox.textContent = err.message;
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Sign In';
+    btn.disabled = false; btn.textContent = 'Sign In';
   }
 });
 
@@ -194,13 +167,11 @@ $('#signupForm').addEventListener('submit', async (e) => {
     return;
   }
 
-  btn.disabled = true;
-  btn.textContent = 'Creating account...';
+  btn.disabled = true; btn.textContent = 'Creating account...';
 
   try {
     const res = await fetch(`${API}/auth/signup`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password, role, department }),
     });
@@ -212,8 +183,7 @@ $('#signupForm').addEventListener('submit', async (e) => {
   } catch (err) {
     errBox.textContent = err.message;
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Create Account & Enter';
+    btn.disabled = false; btn.textContent = 'Create Account & Enter';
   }
 });
 
@@ -254,12 +224,10 @@ $('#forgotSendCodeForm')?.addEventListener('submit', async (e) => {
   errBox.textContent = '';
   successBox.classList.add('hidden');
 
-  btn.disabled = true;
-  btn.textContent = 'Sending verification code...';
+  btn.disabled = true; btn.textContent = 'Sending verification code...';
   try {
     const res = await fetch(`${API}/auth/forgot-password`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     });
@@ -270,12 +238,11 @@ $('#forgotSendCodeForm')?.addEventListener('submit', async (e) => {
     $('#codeSentEmailDisplay').textContent = email;
     $('#forgotSendCodeForm').classList.add('hidden');
     $('#forgotResetForm').classList.remove('hidden');
-    toast('Verification code sent to your email.');
+    toast(`Verification code generated: ${data.verificationCode || 'Sent to email'}`);
   } catch (err) {
     errBox.textContent = err.message;
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Send Verification Code';
+    btn.disabled = false; btn.textContent = 'Send Verification Code';
   }
 });
 
@@ -296,12 +263,10 @@ $('#forgotResetForm')?.addEventListener('submit', async (e) => {
     return;
   }
 
-  btn.disabled = true;
-  btn.textContent = 'Updating password...';
+  btn.disabled = true; btn.textContent = 'Updating password...';
   try {
     const res = await fetch(`${API}/auth/reset-password`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: forgotUserEmail, code, newPassword }),
     });
@@ -318,8 +283,7 @@ $('#forgotResetForm')?.addEventListener('submit', async (e) => {
   } catch (err) {
     errBox.textContent = err.message;
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Update Password & Sign In';
+    btn.disabled = false; btn.textContent = 'Update Password & Sign In';
   }
 });
 
@@ -369,6 +333,7 @@ function showApp() {
     $('#docHeaderGreeting').textContent = currentUser.name;
     $('#docHeaderDept').textContent = currentUser.department || 'General Medicine';
   } else {
+    // Admin / General view defaults to nurse triage view
     $('#nurseView').classList.remove('hidden');
     $('#doctorView').classList.add('hidden');
   }
@@ -379,10 +344,12 @@ function showApp() {
 // =========================================================================
 function updateDoctorAvailabilityUI(isAvail) {
   const isOnline = !!isAvail;
+  // Topbar switch
   $('#topbarAvailCheck').checked = isOnline;
   $('#topbarAvailText').textContent = isOnline ? 'Available' : 'Off Duty';
   $('#topbarAvailDot').classList.toggle('offline', !isOnline);
 
+  // Doctor Station card
   const circle = $('#docAvailCircle');
   const heading = $('#docAvailHeading');
   const sub = $('#docAvailSub');
@@ -395,6 +362,7 @@ function updateDoctorAvailabilityUI(isAvail) {
     : 'You are marked unavailable for new patient intake';
   if (btnText) btnText.textContent = isOnline ? 'Set Status: Off Duty' : 'Set Status: Available on Duty';
 
+  // Profile modal availability
   const profDot = $('#profileAvailDot');
   const profLabel = $('#profileAvailLabel');
   const profBtn = $('#profileAvailToggleBtn');
@@ -445,6 +413,7 @@ async function fetchAvailableDoctors() {
 }
 
 function populateAvailableDoctorsDropdown() {
+  // Nurse station available summary pill
   const pill = $('#availDocsCountPill');
   if (pill) {
     if (availableDoctors.length === 0) {
@@ -456,13 +425,14 @@ function populateAvailableDoctorsDropdown() {
     }
   }
 
+  // Live Queue Doctor Assignment Modal Select
   const modalSelect = $('#modalAssignDoctorSelect');
   if (modalSelect) {
-    modalSelect.innerHTML = '<option value="">-- Unassigned (General Queue) --</option>';
-    availableDoctors.forEach((doc) => {
+    modalSelect.innerHTML = '<option value="">— Unassigned (General Queue) —</option>';
+    availableDoctors.forEach(doc => {
       const opt = document.createElement('option');
       opt.value = doc.id;
-      opt.textContent = `${doc.name} - ${doc.department || 'General'} (Available)`;
+      opt.textContent = `${doc.name} · ${doc.department || 'General'} (Available)`;
       modalSelect.appendChild(opt);
     });
   }
@@ -478,8 +448,7 @@ async function loadReference() {
   ccSelect.innerHTML = '';
   Object.entries(REFERENCE.chiefComplaints).forEach(([key, val]) => {
     const opt = document.createElement('option');
-    opt.value = key;
-    opt.textContent = val.label;
+    opt.value = key; opt.textContent = val.label;
     ccSelect.appendChild(opt);
   });
 
@@ -487,8 +456,7 @@ async function loadReference() {
   avpuSelect.innerHTML = '';
   Object.entries(REFERENCE.consciousnessOptions).forEach(([key, val]) => {
     const opt = document.createElement('option');
-    opt.value = key;
-    opt.textContent = val.label;
+    opt.value = key; opt.textContent = val.label;
     avpuSelect.appendChild(opt);
   });
 
@@ -496,8 +464,7 @@ async function loadReference() {
   overrideSelect.innerHTML = '';
   Object.entries(REFERENCE.levels).forEach(([key, val]) => {
     const opt = document.createElement('option');
-    opt.value = key;
-    opt.textContent = val.label;
+    opt.value = key; opt.textContent = val.label;
     overrideSelect.appendChild(opt);
   });
 }
@@ -528,8 +495,7 @@ $('#intakeForm').addEventListener('submit', async (e) => {
   };
 
   const btn = $('#submitBtn');
-  btn.disabled = true;
-  btn.textContent = 'Scoring triage...';
+  btn.disabled = true; btn.textContent = 'Scoring triage...';
   try {
     const patient = await api('/patients', { method: 'POST', body: JSON.stringify(payload) });
     showLastResult(patient);
@@ -538,12 +504,11 @@ $('#intakeForm').addEventListener('submit', async (e) => {
     await fetchQueueOnce();
     renderQueue();
     refreshStats();
-    toast(`${patient.name} admitted to ED live queue - ${patient.triage?.levelLabel || 'Assessed'}`);
+    toast(`${patient.name} admitted to ED live queue — ${patient.triage?.levelLabel || 'Assessed'}`);
   } catch (err) {
     toast(`Error: ${err.message}`);
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Run Triage Assessment & Admit';
+    btn.disabled = false; btn.textContent = 'Run Triage Assessment & Admit';
   }
 });
 
@@ -561,10 +526,10 @@ function showLastResult(patient) {
 
   box.style.borderLeft = `4px solid ${triage.color || 'var(--accent)'}`;
   box.innerHTML = `
-    <h4>${escapeHtml(patient.name || 'Patient')} - ${triage.levelLabel || 'Triage Assessed'}</h4>
-    <p style="margin:0 0 8px;color:var(--text-muted);font-size:0.82rem;">${triage.recommendedAction || 'Admitted to live queue'} - score ${triage.score || 0}/100</p>
+    <h4>${escapeHtml(patient.name || 'Patient')} — ${triage.levelLabel || 'Triage Assessed'}</h4>
+    <p style="margin:0 0 8px;color:var(--text-muted);font-size:0.82rem;">${triage.recommendedAction || 'Admitted to live queue'} · score ${triage.score || 0}/100</p>
     <ul style="margin:0;padding-left:18px;font-size:0.78rem;color:var(--text-muted);">
-      ${(triage.topReasons || []).map((r) => `<li>${escapeHtml(r.text)} <span style="color:var(--text-dim)">(+${r.points})</span></li>`).join('') || '<li>No notable risk factors identified</li>'}
+      ${(triage.topReasons || []).map(r => `<li>${escapeHtml(r.text)} <span style="color:var(--text-dim)">(+${r.points})</span></li>`).join('') || '<li>No notable risk factors identified</li>'}
     </ul>
     ${docNote}
   `;
@@ -585,8 +550,8 @@ function renderQueue() {
 // ---------------- Nurse Live Queue ----------------
 function renderNurseQueue() {
   let list = latestQueue;
-  if (currentFilter === 'active') list = list.filter((p) => p.status !== 'discharged');
-  else list = list.filter((p) => p.status === currentFilter);
+  if (currentFilter === 'active') list = list.filter(p => p.status !== 'discharged');
+  else list = list.filter(p => p.status === currentFilter);
 
   const container = $('#nurseQueueList');
   if (!container) return;
@@ -597,7 +562,7 @@ function renderNurseQueue() {
     return;
   }
 
-  list.forEach((p) => container.appendChild(renderNursePatientCard(p)));
+  list.forEach(p => container.appendChild(renderNursePatientCard(p)));
 }
 
 function renderNursePatientCard(p) {
@@ -607,7 +572,7 @@ function renderNursePatientCard(p) {
   el.className = 'card' + (effLevel <= 2 && p.status === 'waiting' ? ' pulse' : '');
   el.style.setProperty('--lvl-color', color);
 
-  const ageSex = [p.age != null ? `${p.age}y` : null, p.sex].filter(Boolean).join(' - ');
+  const ageSex = [p.age != null ? `${p.age}y` : null, p.sex].filter(Boolean).join(' · ');
   const complaintLabel = REFERENCE.chiefComplaints[p.chiefComplaint]?.label || p.chiefComplaint;
   const overrideNote = p.overrideLevel
     ? `<div class="override-note">Overridden to Level ${p.overrideLevel} by clinician: "${escapeHtml(p.overrideReason)}"</div>`
@@ -617,7 +582,7 @@ function renderNursePatientCard(p) {
     ? (p.assignedDoctor.name.toLowerCase().startsWith('dr') ? p.assignedDoctor.name : `Dr. ${p.assignedDoctor.name}`)
     : '';
   const docTag = p.assignedDoctor?.name
-    ? `<div class="assigned-doc-tag">Assigned: ${escapeHtml(docNameFormatted)} - ${escapeHtml(p.assignedDoctor.department || 'Specialist')}</div>`
+    ? `<div class="assigned-doc-tag">🩺 Assigned: ${escapeHtml(docNameFormatted)} · ${escapeHtml(p.assignedDoctor.department || 'Specialist')}</div>`
     : `<div class="assigned-doc-tag unassigned">Unassigned (General Queue)</div>`;
 
   el.innerHTML = `
@@ -626,18 +591,18 @@ function renderNursePatientCard(p) {
         <span class="level-badge" style="--lvl-color:${color}">${REFERENCE.levels[effLevel].label}</span>
         <span class="patient-name">${escapeHtml(p.name)}</span>
         <span class="patient-meta">${ageSex}</span>
-        ${p.status === 'in_progress' ? '<span class="patient-meta" style="color:var(--accent);">- being seen</span>' : ''}
-        ${p.status === 'discharged' ? '<span class="patient-meta">- discharged</span>' : ''}
+        ${p.status === 'in_progress' ? '<span class="patient-meta" style="color:var(--accent);">· being seen</span>' : ''}
+        ${p.status === 'discharged' ? '<span class="patient-meta">· discharged</span>' : ''}
       </div>
       <div>${docTag}</div>
-      <div class="complaint">${escapeHtml(complaintLabel)}${p.notes ? ` - <span style="color:var(--text-dim)">${escapeHtml(p.notes)}</span>` : ''}</div>
+      <div class="complaint">${escapeHtml(complaintLabel)}${p.notes ? ` — <span style="color:var(--text-dim)">${escapeHtml(p.notes)}</span>` : ''}</div>
       <div class="card-actions-inline">
         <button class="reasons-toggle" data-id="${p.id}">Why this priority? (score ${p.triage.score}/100)</button>
         <button class="timeline-toggle" data-action="timeline" data-id="${p.id}">Timeline</button>
       </div>
       <div class="reasons" id="reasons-${p.id}">
-        ${p.triage.flags.map((f) => `<div class="flag">! ${escapeHtml(f)}</div>`).join('')}
-        <ul>${p.triage.topReasons.map((r) => `<li>${escapeHtml(r.text)} <span style="color:var(--text-dim)">(+${r.points})</span></li>`).join('') || '<li>No notable risk factors identified</li>'}</ul>
+        ${p.triage.flags.map(f => `<div class="flag">⚠ ${escapeHtml(f)}</div>`).join('')}
+        <ul>${p.triage.topReasons.map(r => `<li>${escapeHtml(r.text)} <span style="color:var(--text-dim)">(+${r.points})</span></li>`).join('') || '<li>No notable risk factors identified</li>'}</ul>
         ${overrideNote}
       </div>
     </div>
@@ -656,10 +621,12 @@ function renderNursePatientCard(p) {
 
 // ---------------- Doctor Live Queue ----------------
 function renderDoctorQueue() {
-  let list = latestQueue.filter((p) => p.assignedDoctor?.id === currentUser.id);
+  // Doctor only sees patients assigned to him/her by triage nurse
+  let list = latestQueue.filter(p => p.assignedDoctor?.id === currentUser.id);
 
-  if (docStatusFilter === 'active') list = list.filter((p) => p.status !== 'discharged');
-  else list = list.filter((p) => p.status === docStatusFilter);
+  // Status filter
+  if (docStatusFilter === 'active') list = list.filter(p => p.status !== 'discharged');
+  else list = list.filter(p => p.status === docStatusFilter);
 
   const container = $('#doctorQueueList');
   if (!container) return;
@@ -670,7 +637,7 @@ function renderDoctorQueue() {
     return;
   }
 
-  list.forEach((p) => container.appendChild(renderDoctorPatientCard(p)));
+  list.forEach(p => container.appendChild(renderDoctorPatientCard(p)));
 }
 
 function renderPatientHealthCondition(p) {
@@ -681,28 +648,28 @@ function renderPatientHealthCondition(p) {
     v.hr != null ? `<span class="vital-chip"><span class="vital-chip-label">HR</span> <strong>${v.hr}</strong> <small>bpm</small></span>` : null,
     v.sbp != null ? `<span class="vital-chip"><span class="vital-chip-label">BP</span> <strong>${v.sbp}</strong> <small>mmHg</small></span>` : null,
     v.rr != null ? `<span class="vital-chip"><span class="vital-chip-label">RR</span> <strong>${v.rr}</strong> <small>/min</small></span>` : null,
-    v.spo2 != null ? `<span class="vital-chip ${v.spo2 < 92 ? 'vital-critical' : ''}"><span class="vital-chip-label">SpO2</span> <strong>${v.spo2}%</strong></span>` : null,
-    v.tempC != null ? `<span class="vital-chip ${v.tempC > 38.5 ? 'vital-critical' : ''}"><span class="vital-chip-label">Temp</span> <strong>${v.tempC} C</strong></span>` : null,
+    v.spo2 != null ? `<span class="vital-chip ${v.spo2 < 92 ? 'vital-critical' : ''}"><span class="vital-chip-label">SpO₂</span> <strong>${v.spo2}%</strong></span>` : null,
+    v.tempC != null ? `<span class="vital-chip ${v.tempC > 38.5 ? 'vital-critical' : ''}"><span class="vital-chip-label">Temp</span> <strong>${v.tempC}°C</strong></span>` : null,
     p.painScore != null ? `<span class="vital-chip ${p.painScore >= 7 ? 'vital-critical' : ''}"><span class="vital-chip-label">Pain</span> <strong>${p.painScore}/10</strong></span>` : null,
     p.consciousness ? `<span class="vital-chip"><span class="vital-chip-label">AVPU</span> <strong>${escapeHtml(p.consciousness.toUpperCase())}</strong></span>` : null,
   ].filter(Boolean);
 
   const clinicalBadges = [
-    p.onsetMinutesAgo != null ? `<span class="health-badge"><span class="badge-icon">Time:</span> Onset: ${p.onsetMinutesAgo}m ago</span>` : null,
-    p.severeBleeding ? `<span class="health-badge alert"><span class="badge-icon">!</span> Severe / Active Bleeding</span>` : null,
-    ...comorbidities.map((c) => `<span class="health-badge comorb"><span class="badge-icon">+</span> ${escapeHtml(c.charAt(0).toUpperCase() + c.slice(1))}</span>`),
+    p.onsetMinutesAgo != null ? `<span class="health-badge"><span class="badge-icon">⏱</span> Onset: ${p.onsetMinutesAgo}m ago</span>` : null,
+    p.severeBleeding ? `<span class="health-badge alert"><span class="badge-icon">🩸</span> Severe / Active Bleeding</span>` : null,
+    ...comorbidities.map(c => `<span class="health-badge comorb"><span class="badge-icon">✚</span> ${escapeHtml(c.charAt(0).toUpperCase() + c.slice(1))}</span>`),
   ].filter(Boolean);
 
   return `
     <div class="patient-health-section">
       <div class="health-header">
-        <span class="health-section-title">Patient Health Condition & Vitals</span>
+        <span class="health-section-title">🩺 Patient Health Condition & Vitals</span>
       </div>
       <div class="vitals-row">
         ${vitalsBadges.length ? vitalsBadges.join('') : '<span class="vital-chip-muted">Vitals not recorded at intake</span>'}
       </div>
       ${clinicalBadges.length ? `<div class="clinical-tags-row">${clinicalBadges.join('')}</div>` : ''}
-      ${p.notes ? `<div class="nurse-notes-box"><span class="notes-icon">Notes:</span> <strong>Nurse Notes:</strong> ${escapeHtml(p.notes)}</div>` : ''}
+      ${p.notes ? `<div class="nurse-notes-box"><span class="notes-icon">📝</span> <strong>Nurse Notes:</strong> ${escapeHtml(p.notes)}</div>` : ''}
     </div>
   `;
 }
@@ -716,13 +683,13 @@ function renderDoctorPatientCard(p) {
   el.style.setProperty('--lvl-color', color);
   el.dataset.id = p.id;
 
-  const ageSex = [p.age != null ? `${p.age}y` : null, p.sex].filter(Boolean).join(' - ');
+  const ageSex = [p.age != null ? `${p.age}y` : null, p.sex].filter(Boolean).join(' · ');
   const complaintLabel = REFERENCE.chiefComplaints[p.chiefComplaint]?.label || p.chiefComplaint;
   const overrideNote = p.overrideLevel
     ? `<div class="override-note">Overridden to Level ${p.overrideLevel} by clinician: "${escapeHtml(p.overrideReason)}"</div>`
     : '';
 
-  const docTag = `<div class="assigned-doc-tag" style="background:rgba(167,139,250,0.15);border-color:var(--doctor-color);color:var(--doctor-color);">Assigned to You (${escapeHtml(currentUser.department || 'Specialist')})</div>`;
+  const docTag = `<div class="assigned-doc-tag" style="background:rgba(167,139,250,0.15);border-color:var(--doctor-color);color:var(--doctor-color);">⭐ Assigned to You (${escapeHtml(currentUser.department || 'Specialist')})</div>`;
 
   el.innerHTML = `
     <div class="card-main">
@@ -730,12 +697,13 @@ function renderDoctorPatientCard(p) {
         <span class="level-badge" style="--lvl-color:${color}">${REFERENCE.levels[effLevel].label}</span>
         <span class="patient-name">${escapeHtml(p.name)}</span>
         <span class="patient-meta">${ageSex}</span>
-        ${p.status === 'in_progress' ? '<span class="patient-meta" style="color:var(--accent);font-weight:600;">- IN TREATMENT</span>' : ''}
-        ${p.status === 'discharged' ? '<span class="patient-meta">- discharged</span>' : ''}
+        ${p.status === 'in_progress' ? '<span class="patient-meta" style="color:var(--accent);font-weight:600;">· IN TREATMENT</span>' : ''}
+        ${p.status === 'discharged' ? '<span class="patient-meta">· discharged</span>' : ''}
       </div>
       <div>${docTag}</div>
       <div class="complaint">${escapeHtml(complaintLabel)}</div>
       
+      <!-- Patient Health Condition & Intake Details -->
       ${renderPatientHealthCondition(p)}
 
       <div class="card-actions-inline" style="margin-top:10px;">
@@ -743,8 +711,8 @@ function renderDoctorPatientCard(p) {
         <button class="timeline-toggle" data-action="timeline" data-id="${p.id}">Audit Timeline</button>
       </div>
       <div class="reasons" id="reasons-${p.id}">
-        ${p.triage.flags.map((f) => `<div class="flag">! ${escapeHtml(f)}</div>`).join('')}
-        <ul>${p.triage.topReasons.map((r) => `<li>${escapeHtml(r.text)} <span style="color:var(--text-dim)">(+${r.points})</span></li>`).join('') || '<li>No notable risk factors identified</li>'}</ul>
+        ${p.triage.flags.map(f => `<div class="flag">⚠ ${escapeHtml(f)}</div>`).join('')}
+        <ul>${p.triage.topReasons.map(r => `<li>${escapeHtml(r.text)} <span style="color:var(--text-dim)">(+${r.points})</span></li>`).join('') || '<li>No notable risk factors identified</li>'}</ul>
         ${overrideNote}
       </div>
     </div>
@@ -764,11 +732,11 @@ function renderDoctorPatientCard(p) {
 // Update doctor quick metrics
 function updateDoctorMetrics() {
   if (currentUser?.role !== 'doctor') return;
-  const myPatients = latestQueue.filter((p) => p.assignedDoctor?.id === currentUser.id);
-  const active = myPatients.filter((p) => p.status !== 'discharged');
-  const waiting = active.filter((p) => p.status === 'waiting');
-  const inTreatment = active.filter((p) => p.status === 'in_progress');
-  const critical = active.filter((p) => (p.overrideLevel ?? p.triage.level) <= 2);
+  const myPatients = latestQueue.filter(p => p.assignedDoctor?.id === currentUser.id);
+  const active = myPatients.filter(p => p.status !== 'discharged');
+  const waiting = active.filter(p => p.status === 'waiting');
+  const inTreatment = active.filter(p => p.status === 'in_progress');
+  const critical = active.filter(p => (p.overrideLevel ?? p.triage.level) <= 2);
 
   const elAssigned = $('#docStatAssigned');
   const elWaiting = $('#docStatWaiting');
@@ -783,38 +751,25 @@ function updateDoctorMetrics() {
   if (elTabCount) elTabCount.textContent = active.length;
 }
 
-// Global click delegation for reason cards and queue buttons
+// ---------------- Global Queue Click Delegation ----------------
 document.addEventListener('click', async (e) => {
-  const toggle = e.target.closest('.reasons-toggle');
-  if (toggle) {
-    const id = toggle.dataset.id;
-    const el = document.getElementById(`reasons-${id}`);
-    if (el) el.classList.toggle('open');
+  const reasonsToggle = e.target.closest('.reasons-toggle');
+  if (reasonsToggle) {
+    const panel = $(`#reasons-${reasonsToggle.dataset.id}`);
+    if (panel) panel.classList.toggle('open');
     return;
   }
 
-  const btn = e.target.closest('[data-action]');
+  const btn = e.target.closest('button[data-action]');
   if (!btn) return;
-  const action = btn.dataset.action;
-  const id = btn.dataset.id;
+  const { action, id } = btn.dataset;
 
   if (action === 'start') {
-    try {
-      await api(`/patients/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'in_progress' }) });
-      await refreshAll();
-      toast('Care started. Status updated to In Treatment.');
-    } catch (err) {
-      toast(`Action failed: ${err.message}`);
-    }
+    await api(`/patients/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'in_progress' }) });
+    toast('Patient marked as In Treatment');
   } else if (action === 'discharge') {
-    if (!confirm('Discharge this patient from the ED queue?')) return;
-    try {
-      await api(`/patients/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'discharged' }) });
-      await refreshAll();
-      toast('Patient discharged from ED queue.');
-    } catch (err) {
-      toast(`Action failed: ${err.message}`);
-    }
+    await api(`/patients/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'discharged' }) });
+    toast('Patient discharged from ED queue');
   } else if (action === 'assign-doc') {
     openAssignDoctorModal(id);
   } else if (action === 'override') {
@@ -833,7 +788,7 @@ document.addEventListener('click', async (e) => {
 // ---------------- Doctor Assignment Modal ----------------
 function openAssignDoctorModal(id) {
   activeAssignPatientId = id;
-  const p = latestQueue.find((x) => x.id === id);
+  const p = latestQueue.find(x => x.id === id);
   if (!p) return;
 
   $('#assignDoctorPatientInfo').textContent = `Assign ${p.name} (${REFERENCE.chiefComplaints[p.chiefComplaint]?.label || p.chiefComplaint})`;
@@ -851,8 +806,7 @@ $('#assignDoctorConfirm').addEventListener('click', async () => {
       body: JSON.stringify({ doctorId }),
     });
     $('#assignDoctorBackdrop').classList.add('hidden');
-    await refreshAll();
-    toast('Doctor assignment updated.');
+    toast('Doctor assignment updated');
   } catch (err) {
     toast(`Assignment failed: ${err.message}`);
   }
@@ -861,111 +815,61 @@ $('#assignDoctorConfirm').addEventListener('click', async () => {
 // ---------------- Override Modal ----------------
 function openOverrideModal(id) {
   activeOverrideId = id;
-  const p = latestQueue.find((x) => x.id === id);
-  if (!p) return;
-  $('#overrideLevel').value = p.overrideLevel ?? p.triage.level;
-  $('#overrideReason').value = p.overrideReason || '';
+  $('#overrideReason').value = '';
   $('#overrideBackdrop').classList.remove('hidden');
 }
-
 $('#overrideCancel').addEventListener('click', () => $('#overrideBackdrop').classList.add('hidden'));
 $('#overrideConfirm').addEventListener('click', async () => {
   const level = Number($('#overrideLevel').value);
   const reason = $('#overrideReason').value.trim();
-  if (!reason) {
-    alert('Please provide a clinical reason for this override.');
-    return;
-  }
-  try {
-    await api(`/patients/${activeOverrideId}/override`, {
-      method: 'POST',
-      body: JSON.stringify({ level, reason }),
-    });
-    $('#overrideBackdrop').classList.add('hidden');
-    await refreshAll();
-    toast('Clinician override logged.');
-  } catch (err) {
-    toast(`Override failed: ${err.message}`);
-  }
+  if (!reason) { toast('A reason is required to override'); return; }
+  await api(`/patients/${activeOverrideId}/override`, { method: 'POST', body: JSON.stringify({ level, reason }) });
+  $('#overrideBackdrop').classList.add('hidden');
+  toast('Clinician override logged');
 });
 
 // ---------------- Re-triage Modal ----------------
 function openRetriageModal(id) {
   activeRetriageId = id;
-  const p = latestQueue.find((x) => x.id === id);
-  if (!p) return;
-  const v = p.vitals || {};
-  $('#rtHr').value = v.hr ?? '';
-  $('#rtSbp').value = v.sbp ?? '';
-  $('#rtRr').value = v.rr ?? '';
-  $('#rtSpo2').value = v.spo2 ?? '';
-  $('#rtTemp').value = v.tempC ?? '';
-  $('#rtPain').value = p.painScore ?? '';
+  ['rtHr','rtSbp','rtRr','rtSpo2','rtTemp','rtPain'].forEach(f => $(`#${f}`).value = '');
   $('#retriageBackdrop').classList.remove('hidden');
 }
-
 $('#retriageCancel').addEventListener('click', () => $('#retriageBackdrop').classList.add('hidden'));
 $('#retriageConfirm').addEventListener('click', async () => {
-  const vitals = {
-    hr: numOrUndef($('#rtHr').value),
-    sbp: numOrUndef($('#rtSbp').value),
-    rr: numOrUndef($('#rtRr').value),
-    spo2: numOrUndef($('#rtSpo2').value),
-    tempC: numOrUndef($('#rtTemp').value),
+  const body = {
+    vitals: {
+      hr: numOrUndef('#rtHr'), sbp: numOrUndef('#rtSbp'), rr: numOrUndef('#rtRr'),
+      spo2: numOrUndef('#rtSpo2'), tempC: numOrUndef('#rtTemp'),
+    },
+    painScore: numOrUndef('#rtPain'),
   };
-  const painScore = numOrUndef($('#rtPain').value);
-  try {
-    const result = await api(`/patients/${activeRetriageId}/retriage`, {
-      method: 'POST',
-      body: JSON.stringify({ vitals, painScore }),
-    });
-    $('#retriageBackdrop').classList.add('hidden');
-    await refreshAll();
-    toast(result.deteriorated ? `Warning: ${result.name} re-triaged to a MORE urgent level` : 'Re-triage complete');
-  } catch (err) {
-    toast(`Re-triage failed: ${err.message}`);
-  }
+  Object.keys(body.vitals).forEach(k => body.vitals[k] === undefined && delete body.vitals[k]);
+  const result = await api(`/patients/${activeRetriageId}/retriage`, { method: 'POST', body: JSON.stringify(body) });
+  $('#retriageBackdrop').classList.add('hidden');
+  toast(result.deteriorated ? `⚠ ${result.name} re-triaged to a MORE urgent level` : 'Re-triage complete');
 });
 
-function numOrUndef(v) {
+function numOrUndef(sel) {
+  const v = $(sel).value;
   return v === '' ? undefined : Number(v);
 }
 
-// ---------------- Timeline Modal with Hash-Chain Verification ----------------
+// ---------------- Timeline Modal ----------------
 async function openTimelineModal(id) {
   try {
     const data = await api(`/patients/${id}/timeline`);
-    $('#timelineTitle').textContent = `${data.name} - Timeline`;
-    const badge = $('#timelineAuditBadge');
-    if (badge) {
-      if (data.auditChainVerified) {
-        badge.textContent = 'Cryptographically Verified (SHA-256)';
-        badge.style.color = '#4ade80';
-        badge.style.background = 'rgba(34,197,94,0.15)';
-        badge.style.borderColor = 'rgba(34,197,94,0.3)';
-      } else {
-        badge.textContent = 'Integrity Warning: Chain Broken';
-        badge.style.color = '#f87171';
-        badge.style.background = 'rgba(239,68,68,0.15)';
-        badge.style.borderColor = 'rgba(239,68,68,0.3)';
-      }
-    }
-
+    $('#timelineTitle').textContent = `${data.name} — Timeline`;
     const list = $('#timelineList');
     list.innerHTML = '';
-    data.history.slice().reverse().forEach((h) => {
+    data.history.slice().reverse().forEach(h => {
       const li = document.createElement('li');
       const lvl = h.level ? REFERENCE.levels[h.level] : null;
       if (lvl) li.style.setProperty('--lvl-color', lvl.color);
       const who = h.byName ? `${escapeHtml(h.byName)} (${escapeHtml(h.byRole)})` : 'System';
       const when = new Date(h.at).toLocaleString();
-      const hashLabel = h.hash
-        ? `<span style="display:inline-block; margin-left:6px; font-family:var(--font-mono); font-size:0.7rem; color:var(--text-dim);" title="SHA-256 Hash: ${h.hash}">hash:${h.hash.slice(0, 8)}...</span>`
-        : '';
-
       li.innerHTML = `
-        <div class="timeline-event">${escapeHtml(h.event.replace(':', ' -> '))}${lvl ? ` - ${lvl.label}` : ''}</div>
-        <div class="timeline-meta">${when} - ${who}${hashLabel}</div>
+        <div class="timeline-event">${escapeHtml(h.event.replace(':', ' → '))}${lvl ? ` — ${lvl.label}` : ''}</div>
+        <div class="timeline-meta">${when} · ${who}</div>
         ${h.reason ? `<div class="timeline-reason">"${escapeHtml(h.reason)}"</div>` : ''}
       `;
       list.appendChild(li);
@@ -1019,8 +923,7 @@ $('#editProfileForm').addEventListener('submit', async (e) => {
   const email = $('#editProfileEmail').value.trim();
   const department = currentUser.role === 'doctor' ? $('#editProfileDept').value : undefined;
   const feedback = $('#editProfileFeedback');
-  feedback.className = 'form-feedback';
-  feedback.textContent = 'Saving changes...';
+  feedback.className = 'form-feedback'; feedback.textContent = 'Saving changes...';
 
   try {
     const res = await api('/auth/profile', {
@@ -1104,7 +1007,7 @@ async function refreshStats() {
   const total = Object.values(stats.byLevel).reduce((a, b) => a + b, 0) || 1;
   const dist = $('#distribution');
   dist.innerHTML = '';
-  [1, 2, 3, 4, 5].forEach((level) => {
+  [1, 2, 3, 4, 5].forEach(level => {
     const count = stats.byLevel[level];
     if (count === 0) return;
     const seg = document.createElement('div');
@@ -1129,7 +1032,7 @@ async function refreshAll() {
 $('#queueFilters')?.addEventListener('click', (e) => {
   const chip = e.target.closest('.chip');
   if (!chip) return;
-  $$('#queueFilters .chip').forEach((c) => c.classList.remove('active'));
+  $$('#queueFilters .chip').forEach(c => c.classList.remove('active'));
   chip.classList.add('active');
   currentFilter = chip.dataset.filter;
   renderQueue();
@@ -1138,7 +1041,7 @@ $('#queueFilters')?.addEventListener('click', (e) => {
 $('#docStatusFilters')?.addEventListener('click', (e) => {
   const chip = e.target.closest('.chip');
   if (!chip) return;
-  $$('#docStatusFilters .chip').forEach((c) => c.classList.remove('active'));
+  $$('#docStatusFilters .chip').forEach(c => c.classList.remove('active'));
   chip.classList.add('active');
   docStatusFilter = chip.dataset.filter;
   renderQueue();
@@ -1151,7 +1054,7 @@ function tickClock() {
 setInterval(tickClock, 1000);
 tickClock();
 
-// Synthesized notification chime via Web Audio API
+// Synthesized pleasant notification chime via Web Audio API
 function playAlertChime() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1168,11 +1071,11 @@ function playAlertChime() {
     osc.start(now);
     osc.stop(now + 0.6);
   } catch (e) {
-    // Audio Context may require initial click
+    // Audio Context may require initial user click in some browsers
   }
 }
 
-// Interactive notification banner for doctors
+// Display high-priority interactive notification banner for doctors
 function showDoctorPatientAlert(p) {
   playAlertChime();
   const container = $('#doctorNotificationCenter');
@@ -1182,20 +1085,20 @@ function showDoctorPatientAlert(p) {
   const color = levelColor(effLevel);
   const v = p.vitals || {};
   const complaintLabel = REFERENCE.chiefComplaints?.[p.chiefComplaint]?.label || p.chiefComplaint;
-  const ageSex = [p.age != null ? `${p.age}y` : null, p.sex].filter(Boolean).join(' - ');
+  const ageSex = [p.age != null ? `${p.age}y` : null, p.sex].filter(Boolean).join(' · ');
 
   const vitalsSummary = [
     v.hr ? `HR: <strong>${v.hr}</strong> bpm` : null,
     v.sbp ? `BP: <strong>${v.sbp}</strong> mmHg` : null,
-    v.spo2 ? `SpO2: <strong>${v.spo2}%</strong>` : null,
-    v.tempC ? `Temp: <strong>${v.tempC} C</strong>` : null,
+    v.spo2 ? `SpO₂: <strong>${v.spo2}%</strong>` : null,
+    v.tempC ? `Temp: <strong>${v.tempC}°C</strong>` : null,
     p.painScore != null ? `Pain: <strong>${p.painScore}/10</strong>` : null,
   ].filter(Boolean).join(' | ');
 
   const situationFlags = [
-    p.severeBleeding ? '<span class="notif-badge danger">Severe Bleeding</span>' : '',
+    p.severeBleeding ? '<span class="notif-badge danger">🩸 Severe Bleeding</span>' : '',
     p.consciousness && p.consciousness !== 'alert' ? `<span class="notif-badge warning">AVPU: ${escapeHtml(p.consciousness.toUpperCase())}</span>` : '',
-    ...(p.comorbidities || []).map((c) => `<span class="notif-badge comorb">+ ${escapeHtml(c)}</span>`),
+    ...(p.comorbidities || []).map(c => `<span class="notif-badge comorb">✚ ${escapeHtml(c)}</span>`),
   ].filter(Boolean).join(' ');
 
   const card = document.createElement('div');
@@ -1204,8 +1107,8 @@ function showDoctorPatientAlert(p) {
   card.innerHTML = `
     <div class="doc-alert-header">
       <div class="doc-alert-title-row">
-        <span class="doc-alert-badge" style="background:${color}; color:#0a0f1a;">Level ${effLevel} - ${REFERENCE.levels?.[effLevel]?.label || ''}</span>
-        <span class="doc-alert-heading">New Patient Assigned to Your Station</span>
+        <span class="doc-alert-badge" style="background:${color}; color:#0a0f1a;">Level ${effLevel} · ${REFERENCE.levels?.[effLevel]?.label || ''}</span>
+        <span class="doc-alert-heading">🚨 New Patient Assigned to Your Station!</span>
       </div>
       <button class="doc-alert-close" title="Dismiss">&times;</button>
     </div>
@@ -1221,13 +1124,16 @@ function showDoctorPatientAlert(p) {
     </div>
   `;
 
+  // Close dismiss handler
   card.querySelector('.doc-alert-close').addEventListener('click', () => {
     card.classList.add('dismissing');
     setTimeout(() => card.remove(), 250);
   });
 
+  // Review & Attend handler
   card.querySelector('.doc-alert-btn-attend').addEventListener('click', () => {
     card.remove();
+    // Scroll smoothly to doctor live queue and highlight the patient card
     const targetCard = $(`#doctorQueueList .card[data-id="${p.id}"]`) || document.querySelector(`#doctorQueueList`);
     if (targetCard) {
       targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1238,6 +1144,7 @@ function showDoctorPatientAlert(p) {
 
   container.prepend(card);
 
+  // Auto-dismiss after 15 seconds
   setTimeout(() => {
     if (card.parentNode) {
       card.classList.add('dismissing');
@@ -1250,15 +1157,7 @@ function showDoctorPatientAlert(p) {
 // REAL-TIME SYNC (SOCKET.IO)
 // =========================================================================
 function connectSocket() {
-  if (socket) {
-    socket.disconnect();
-  }
-
-  socket = io('http://localhost:4000', {
-    withCredentials: true,
-    auth: { token: authToken },
-    transports: ['websocket', 'polling'],
-  });
+  socket = io('http://localhost:4000', { transports: ['websocket', 'polling'] });
 
   socket.on('connect', () => {
     $('#liveDot').classList.add('on');
@@ -1268,10 +1167,6 @@ function connectSocket() {
     $('#liveDot').classList.remove('on');
   });
 
-  socket.on('connect_error', (err) => {
-    console.warn('Real-time socket authentication warning:', err.message);
-  });
-
   socket.on('queue:update', (list) => {
     latestQueue = list;
     renderQueue();
@@ -1279,10 +1174,11 @@ function connectSocket() {
   });
 
   socket.on('doctors:update', (docs) => {
-    availableDoctors = docs.filter((d) => d.isAvailable !== false);
+    availableDoctors = docs.filter(d => d.isAvailable !== false);
     populateAvailableDoctorsDropdown();
+    // If current doctor's availability was updated remotely
     if (currentUser?.role === 'doctor') {
-      const me = docs.find((d) => d.id === currentUser.id);
+      const me = docs.find(d => d.id === currentUser.id);
       if (me && me.isAvailable !== currentUser.isAvailable) {
         currentUser.isAvailable = me.isAvailable;
         updateDoctorAvailabilityUI(currentUser.isAvailable);
@@ -1290,6 +1186,7 @@ function connectSocket() {
     }
   });
 
+  // Real-time notification when a patient is assigned to this doctor
   socket.on('doctor:patient_assigned', (data) => {
     if (!currentUser || currentUser.role !== 'doctor') return;
     if (data.doctorId === currentUser.id) {
@@ -1299,7 +1196,7 @@ function connectSocket() {
   });
 
   socket.on('patient:deteriorated', (info) => {
-    toast(`Acuity Warning: ${info.name} deteriorated to ${REFERENCE.levels[info.level]?.label || 'urgent'}`);
+    toast(`⚠ Acuity Warning: ${info.name} deteriorated to ${REFERENCE.levels[info.level]?.label || 'urgent'}`);
   });
 }
 
@@ -1321,21 +1218,21 @@ async function boot() {
   }
 }
 
-async function init() {
-  try {
-    const res = await fetch(`${API}/auth/me`, { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      currentUser = data.user;
-      sessionStorage.setItem('pt_user', JSON.stringify(currentUser));
-      await boot();
+(function init() {
+  const token = sessionStorage.getItem('pt_token') || localStorage.getItem('pt_token');
+  const userRaw = sessionStorage.getItem('pt_user') || localStorage.getItem('pt_user');
+  if (token && userRaw) {
+    try {
+      authToken = token;
+      currentUser = JSON.parse(userRaw);
+      sessionStorage.setItem('pt_token', token);
+      sessionStorage.setItem('pt_user', userRaw);
+      boot();
       return;
+    } catch (e) {
+      clearSession();
     }
-  } catch (err) {
-    // If backend unreachable or unauthenticated, show login
   }
-  clearSession();
   showLogin();
-}
+})();
 
-init();

@@ -1,7 +1,7 @@
 {
   "name": "patient-triage-ai-backend",
   "version": "3.0.0",
-  "description": "AI-assisted Emergency Department patient triage decision-support backend with real-time routing, authenticated Socket.io, hash-chained audit timeline, and optimistic concurrency control.",
+  "description": "AI-assisted ED patient triage decision-support backend (Accenture Innovation Challenge 2026 - PatientTriage.ai). Round 2: MongoDB persistence, staff authentication with roles, real-time Socket.io sync, and patient audit timeline.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",

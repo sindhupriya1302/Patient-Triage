@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 
 /**
  * Staff accounts for Nurses and Doctors.
- * Passwords and sensitive reset tokens are stored as secure hashes only.
+ * Passwords are stored as bcrypt hashes only — never plaintext.
  * Roles:
  *   - nurse  : intake, doctor assignment, re-triage, override, status changes
  *   - doctor : clinical care, re-triage, override, discharge, availability toggle, department specialization
- *   - admin  : management, approvals, and oversight
+ *   - admin  : management and oversight
  */
 const StaffSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
@@ -14,13 +14,10 @@ const StaffSchema = new mongoose.Schema({
   username: { type: String, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ['nurse', 'doctor', 'admin'], required: true },
-  department: { type: String, default: null, trim: true },
-  isAvailable: { type: Boolean, default: true },
-  isApproved: { type: Boolean, default: true },
-  resetCodeHash: { type: String, default: null },
-  resetCodeExpires: { type: Date, default: null },
-  resetAttempts: { type: Number, default: 0 },
-  resetLastRequestedAt: { type: Date, default: null },
+  department: { type: String, default: null, trim: true }, // e.g. 'Cardiology', 'Neurology', 'Pulmonology', etc.
+  isAvailable: { type: Boolean, default: true }, // availability for doctor on-duty status
+  resetCode: { type: String, default: null }, // 6-digit password verification code
+  resetCodeExpires: { type: Date, default: null }, // expiry timestamp for verification code
 }, {
   timestamps: true,
 });
@@ -30,11 +27,9 @@ StaffSchema.set('toJSON', {
     ret.id = ret._id.toString();
     delete ret._id;
     delete ret.__v;
-    delete ret.passwordHash;
-    delete ret.resetCodeHash;
+    delete ret.passwordHash; // never sent to the client, even by accident
+    delete ret.resetCode;
     delete ret.resetCodeExpires;
-    delete ret.resetAttempts;
-    delete ret.resetLastRequestedAt;
     return ret;
   },
 });

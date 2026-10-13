@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
-const crypto = require('crypto');
-
-const GENESIS_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
 /**
- * A single triage snapshot - stores the AI's recommendation
- * exactly as computed, without overwriting upon clinician override.
+ * A single triage snapshot — we store the AI's ORIGINAL recommendation
+ * exactly as computed, and never overwrite it. A new intake or a
+ * re-triage creates a new snapshot; overrides are stored separately
+ * (see overrideLevel/overrideReason on the patient itself) so the
+ * AI's own output is always recoverable for audit purposes.
  */
 const TriageSnapshotSchema = new mongoose.Schema({
   score: Number,
@@ -20,76 +20,19 @@ const TriageSnapshotSchema = new mongoose.Schema({
 }, { _id: false });
 
 /**
- * Cryptographically tamper-proof audit log entry.
- * Uses SHA-256 hash-chaining where each entry points to the hash of the preceding entry.
+ * history is an append-only audit log. Entries are pushed, never
+ * edited or removed — this is what makes overrides and re-triages
+ * defensible after the fact ("what did the system know, and when").
  */
 const HistoryEntrySchema = new mongoose.Schema({
   at: { type: Date, default: Date.now },
-  event: { type: String, required: true },
+  event: String,           // 'intake' | 're-triage' | 'override' | 'status:<x>'
   level: Number,
   score: Number,
   reason: String,
-  byName: { type: String, default: null },
-  byRole: { type: String, default: null },
-  prevHash: { type: String, required: true, default: GENESIS_HASH },
-  hash: { type: String, required: true },
+  byName: { type: String, default: null },  // who performed the action
+  byRole: { type: String, default: null },  // their role at the time
 }, { _id: false });
-
-function calculateEntryHash(prevHash, entry) {
-  const atStr = entry.at instanceof Date ? entry.at.toISOString() : new Date(entry.at || Date.now()).toISOString();
-  const payload = [
-    prevHash || GENESIS_HASH,
-    atStr,
-    entry.event || '',
-    entry.level != null ? entry.level : '',
-    entry.score != null ? entry.score : '',
-    entry.reason || '',
-    entry.byName || '',
-    entry.byRole || ''
-  ].join('|');
-  return crypto.createHash('sha256').update(payload).digest('hex');
-}
-
-function appendHistory(patient, entryData) {
-  if (!patient.history) {
-    patient.history = [];
-  }
-  const history = patient.history;
-  const prevHash = (history.length > 0 && history[history.length - 1].hash)
-    ? history[history.length - 1].hash
-    : GENESIS_HASH;
-  const at = entryData.at || new Date();
-  const entry = {
-    ...entryData,
-    at,
-    prevHash,
-  };
-  entry.hash = calculateEntryHash(prevHash, entry);
-  patient.history.push(entry);
-  return entry;
-}
-
-function verifyHistoryChain(history) {
-  if (!Array.isArray(history) || history.length === 0) {
-    return { verified: true, count: 0 };
-  }
-  let prevHash = GENESIS_HASH;
-  for (let i = 0; i < history.length; i++) {
-    const entry = history[i];
-    if (!entry.hash || !entry.prevHash) {
-      return { verified: false, brokenAtIndex: i, error: `Missing cryptographic hash at entry index ${i}` };
-    }
-    if (entry.prevHash !== prevHash) {
-      return { verified: false, brokenAtIndex: i, error: `Broken chain link at index ${i}` };
-    }
-    const computed = calculateEntryHash(prevHash, entry);
-    if (entry.hash !== computed) {
-      return { verified: false, brokenAtIndex: i, error: `Content hash verification failed at index ${i}` };
-    }
-    prevHash = entry.hash;
-  }
-  return { verified: true, count: history.length };
-}
 
 const PatientSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -113,7 +56,7 @@ const PatientSchema = new mongoose.Schema({
   arrivedAt: { type: Date, default: Date.now },
   status: { type: String, enum: ['waiting', 'in_progress', 'discharged'], default: 'waiting' },
 
-  triage: { type: TriageSnapshotSchema, required: true },
+  triage: { type: TriageSnapshotSchema, required: true },     // AI's current recommendation — never mutated by an override
   overrideLevel: { type: Number, default: null },
   overrideReason: { type: String, default: null },
 
@@ -126,23 +69,18 @@ const PatientSchema = new mongoose.Schema({
 
   history: { type: [HistoryEntrySchema], default: [] },
 }, {
-  timestamps: true,
-  optimisticConcurrency: true,
+  timestamps: true, // adds createdAt / updatedAt automatically
 });
 
+// Shape the JSON the API sends back so the frontend contract never changes:
+// Mongo's `_id` becomes `id`, and `__v` is dropped.
 PatientSchema.set('toJSON', {
   transform: (_doc, ret) => {
     ret.id = ret._id.toString();
-    ret.version = ret.__v;
     delete ret._id;
+    delete ret.__v;
     return ret;
   },
 });
 
-module.exports = {
-  Patient: mongoose.model('Patient', PatientSchema),
-  appendHistory,
-  verifyHistoryChain,
-  calculateEntryHash,
-  GENESIS_HASH,
-};
+module.exports = mongoose.model('Patient', PatientSchema);
