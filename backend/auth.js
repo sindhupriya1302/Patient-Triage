@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-change-me';
-const TOKEN_TTL = '12h'; // a shift-length session is a reasonable default for a clinical tool
+const TOKEN_TTL = '12h';
 
 async function hashPassword(plain) {
   return bcrypt.hash(plain, 10);
@@ -32,14 +32,24 @@ function verifyToken(token) {
 }
 
 /**
- * requireAuth — attaches req.user from a valid Bearer token, or 401s.
- * Every /api/patients* route needs this: triage data shouldn't be
- * readable or writable by an unauthenticated caller.
+ * requireAuth - attaches req.user from an httpOnly cookie or valid Bearer token, or returns 401.
  */
 function requireAuth(req, res, next) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  let token = null;
+
+  if (req.cookies && req.cookies.pt_token) {
+    token = req.cookies.pt_token;
+  } else if (req.headers && req.headers.authorization) {
+    const header = req.headers.authorization;
+    if (header.startsWith('Bearer ')) {
+      token = header.slice(7);
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
   try {
     req.user = verifyToken(token);
     next();
@@ -49,9 +59,7 @@ function requireAuth(req, res, next) {
 }
 
 /**
- * requireRole('doctor','admin') — call after requireAuth. Blocks
- * roles that shouldn't perform a given action (e.g. only nurses and
- * doctors intake/override; a future 'viewer' role could read-only).
+ * requireRole - verifies user has one of the allowed roles.
  */
 function requireRole(...allowed) {
   return (req, res, next) => {
@@ -63,4 +71,12 @@ function requireRole(...allowed) {
   };
 }
 
-module.exports = { hashPassword, checkPassword, signToken, verifyToken, requireAuth, requireRole };
+module.exports = {
+  hashPassword,
+  checkPassword,
+  signToken,
+  verifyToken,
+  requireAuth,
+  requireRole,
+  JWT_SECRET,
+};

@@ -1,12 +1,22 @@
 # Environment variables
 .env
+backend/.env
+frontend/.env
 
 # Node dependencies
 node_modules/
+backend/node_modules/
 
 # Logs
 *.log
+npm-debug.log*
 
 # Local Mongo Data
 data/
 backend/data/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
