@@ -8,7 +8,7 @@ PatientTriage is an intelligent clinical decision-support portal designed for Em
 
 ## Key Features
 
-### 1. AI Clinical Decision Support (`triageEngine.js`)
+### 1.  Clinical Decision Support (`triageEngine.js`)
 - **5-Level Acuity Scale**: Modeled on the Emergency Severity Index (ESI):
   - **Level 1 — Resuscitation (Red)**: Immediate life-saving intervention (e.g., cardiac arrest, SpO₂ < 90%, unresponsiveness).
   - **Level 2 — Emergent (Orange)**: High risk, severe pain (≥8/10), altered mental status, severe vitals instability.
