@@ -15,7 +15,7 @@ PatientTriage is an intelligent clinical decision-support portal designed for Em
   - **Level 3 — Urgent (Yellow)**: Moderate distress requiring multiple hospital resources.
   - **Level 4 — Less Urgent (Green)**: Stable vitals requiring simple evaluation.
   - **Level 5 — Non-Urgent (Blue)**: Low-acuity, minor symptoms.
-- **Explainable AI Score (0–100)**: Provides a breakdown of contributing risk factors (vitals deviation, symptom onset time, comorbidities, bleeding, age risk).
+- **Explainable Score (0–100)**: Provides a breakdown of contributing risk factors (vitals deviation, symptom onset time, comorbidities, bleeding, age risk).
 - **Deterioration Detection**: Re-triaging flags vital sign deterioration in real time across all connected screens.
 
 ### 2. Nurse Triage Station
