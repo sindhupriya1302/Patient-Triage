@@ -59,7 +59,7 @@ PatientTriage is an intelligent clinical decision-support portal designed for Em
 - **Frontend**: Vanilla HTML5, CSS3 (Modern Medical Dark Mode), Vanilla JavaScript (ES6+), Socket.io Client, Web Audio API.
 
 ```
-patient-triage-ai/
+patient-triage/
 ├── backend/
 │   ├── models/
 │   │   ├── Patient.js          # Patient Mongoose schema + vitals + audit timeline
