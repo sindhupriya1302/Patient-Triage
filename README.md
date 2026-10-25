@@ -1,8 +1,8 @@
-# PatientTriage.ai
+# PatientTriage
 
-**AI-Assisted Emergency Department Clinical Decision Support & Real-Time Patient Routing System**
 
-PatientTriage.ai is an intelligent clinical decision-support portal designed for Emergency Departments (ED). It assists triage nurses and attending physicians in rapidly prioritizing incoming patients, assessing physiological risk factors, routing patients to available on-duty specialists, and tracking patient care in real time.
+
+PatientTriage is an intelligent clinical decision-support portal designed for Emergency Departments (ED). It assists triage nurses and attending physicians in rapidly prioritizing incoming patients, assessing physiological risk factors, routing patients to available on-duty specialists, and tracking patient care in real time.
 
 ---
 
