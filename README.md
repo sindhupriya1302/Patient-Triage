@@ -70,7 +70,7 @@ patient-triage/
 │   ├── package.json            # Node.js backend dependencies & scripts
 │   ├── seedStaff.js            # Staff database initialization helper
 │   ├── server.js               # Express API + Socket.io + clinical routes
-│   └── triageEngine.js         # AI triage scoring engine & explainability logic
+│   └── triageEngine.js         # Triage scoring engine & explainability logic
 ├── frontend/
 │   ├── app.js                  # Client logic, Socket.io sync, doctor alerts, audio chime
 │   ├── index.html              # Application markup (Auth, Nurse Station, Doctor Station, Modals)
